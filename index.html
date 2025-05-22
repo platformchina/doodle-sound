@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Natalie's Doodle to Sound  画图变音乐</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Natalie's Doodle to Sound</h1>
+        
+        <div class="controls">
+            <div>
+                <label>Brush Color:</label>
+                <button class="color-btn" data-color="red" style="background-color: red;"></button>
+                <button class="color-btn" data-color="green" style="background-color: green;"></button>
+                <button class="color-btn" data-color="blue" style="background-color: blue;"></button>
+                <button class="color-btn" data-color="black" style="background-color: black;"></button>
+                <button class="color-btn" data-color="yellow" style="background-color: yellow;"></button>
+                <input type="color" id="customColorPicker" value="#FF00FF">
+            </div>
+            <div class="brush-size-control">
+                <label for="lineWidthSlider">Brush Size:</label>
+                <input type="range" id="lineWidthSlider" min="1" max="30" value="5">
+                <span id="lineWidthValue">5</span>px
+            </div>
+        </div>
+
+        <canvas id="doodleCanvas" width="600" height="300"></canvas>
+
+        <div class="actions">
+            <button id="playSoundBtn">Turn Drawing into Sound 变成音乐</button>
+            <button id="clearCanvasBtn">Clear Drawing 清除绘画</button>
+        </div>
+        
+        <div class="instructions">
+            <p><strong>How it works:</strong></p>
+            <ul>
+                <li>Select brush color and size.</li>
+                <li>Draw on the canvas.</li>
+                <li>The horizontal position (X-axis) represents time.</li>
+                <li>The vertical position (Y-axis) represents pitch (higher up = higher pitch).</li>
+                <li>Different colors produce different sound timbres (filtered for smoothness):
+                    <ul>
+                        <li>Red: Sine wave</li>
+                        <li>Green: Square wave</li>
+                        <li>Blue: Sawtooth wave</li>
+                        <li>Yellow: Triangle wave</li>
+                        <li>Black & Others: Sine wave</li>
+                <li>选择笔刷颜色和画笔大小</li>
+                <li>在画布上画画</li>
+                <li>水平位置（X 轴）代表时间</li>
+                <li>垂直位置（Y 轴）代表音高（越高 = 音高越高）</li>
+                <li>不同的颜色产生不同的音色（经过平滑过滤）：
+                    <ul>
+                        <li>红色：正弦波</li>
+                        <li>绿色：方波</li>
+                        <li>蓝色：锯齿波</li>
+                        <li>黄色：三角波</li>
+                        <li>黑色及其他：正弦波</li>        
+                    </ul>
+                </li>
+                <li>The selected Brush Size affects the overall volume of the sound.所选的画笔大小会影响声音的整体音量。</li>
+                <li>Click "Turn Drawing into Sound" to hear your creation!</li>
+                <li>所选的画笔大小会影响声音的整体音量。</li>
+                <li>单击“将绘图转换为声音”来聆听您的创作！</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
