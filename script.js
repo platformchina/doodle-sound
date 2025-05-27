@@ -11,8 +11,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let drawing = false;
     let currentColor = 'black';
     let currentLineWidth = 5;
-    let audioCtx = null;
+    let audioCtx = null; // AudioContext 将在这里初始化
 
+    // --- Canvas Setup and Initialization ---
     function initializeCanvas() {
         ctx.fillStyle = 'white';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -46,6 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.lineWidth = currentLineWidth;
     });
 
+    // --- Drawing Logic ---
     function startPosition(e) {
         drawing = true;
         const { x, y } = getMousePos(canvas, e);
@@ -94,6 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
     canvas.addEventListener('touchend', (e) => { e.preventDefault(); endPosition(); }, { passive: false });
     canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); }, { passive: false });
 
+    // --- Controls Logic ---
     colorBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             currentColor = btn.dataset.color;
@@ -129,10 +132,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
+    // --- Web Audio API Logic ---
     function getAudioContext() {
         if (!audioCtx) {
             try {
+                console.log("Attempting to create AudioContext...");
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                console.log("AudioContext created. State:", audioCtx.state);
             } catch (e) {
                 alert("Web Audio API is not supported in this browser.");
                 console.error("Error creating AudioContext:", e);
@@ -142,90 +148,104 @@ document.addEventListener('DOMContentLoaded', () => {
         return audioCtx;
     }
 
-    // --- playNote function modified for beautiful Piano with Echo ---
-    function playNote(frequency, startTime, duration = 0.6, volume = 0.2) { 
-        const actx = getAudioContext();
-        if (!actx || actx.state === 'closed') return;
-
-        const now = actx.currentTime + startTime;
+    function playNote(frequency, scheduleTime, duration = 0.7, volume = 0.2) { 
+        const actx = getAudioContext(); // Ensures audioCtx is initialized
+        if (!actx || actx.state === 'closed') {
+            console.error("playNote: AudioContext not available or closed.");
+            return;
+        }
+        // It's good practice that actx.state is 'running' here, ensured by playSoundBtn
+        // console.log(`playNote called: Freq=${frequency.toFixed(2)}, SchedTime=${scheduleTime.toFixed(2)}, Dur=${duration}, Vol=${volume.toFixed(2)}, ACState=${actx.state}`);
 
         // --- Oscillator (Sound Source) ---
         const oscillator = actx.createOscillator();
-        oscillator.type = 'triangle'; // Triangle wave for a richer, yet soft tone
-        oscillator.frequency.setValueAtTime(frequency, now);
+        oscillator.type = 'triangle'; 
+        oscillator.frequency.setValueAtTime(frequency, scheduleTime);
         
-        // --- Low-pass Filter (to soften the sound, remove harshness) ---
+        // --- Low-pass Filter (to soften the sound) ---
         const filter = actx.createBiquadFilter();
         filter.type = 'lowpass';
-        // Adjust cutoff frequency: higher for brighter, lower for mellower.
-        // 800-1200Hz is a good starting range for piano-like warmth.
-        filter.frequency.setValueAtTime(1000, now); 
-        filter.Q.setValueAtTime(0.7, now); // Lower Q for less resonance
+        filter.frequency.setValueAtTime(1000, scheduleTime); 
+        filter.Q.setValueAtTime(0.7, scheduleTime); 
 
         // --- Main Gain (for ADSR envelope of the direct sound) ---
         const mainGain = actx.createGain();
 
         // --- Echo/Delay Path ---
-        const delayNode = actx.createDelay(1.0); // Max delay time 1 second
+        const delayNode = actx.createDelay(1.0); 
         const feedbackGain = actx.createGain();
-        const wetGain = actx.createGain(); // Controls the volume of the echo
+        const wetGain = actx.createGain(); 
 
         // --- Connections ---
         oscillator.connect(filter);
-        filter.connect(mainGain);         // Filtered sound to main gain (direct path)
+        filter.connect(mainGain);         
         mainGain.connect(actx.destination);
 
-        filter.connect(delayNode);          // Filtered sound also goes to delay input
-        delayNode.connect(feedbackGain);    // Output of delay to feedback gain
-        feedbackGain.connect(delayNode);    // Feedback gain back to delay input (creates repeating echoes)
-        delayNode.connect(wetGain);         // Output of delay to wet gain (controls echo volume)
-        wetGain.connect(actx.destination);  // Echo path to destination
+        filter.connect(delayNode);          
+        delayNode.connect(feedbackGain);    
+        feedbackGain.connect(delayNode);    
+        delayNode.connect(wetGain);         
+        wetGain.connect(actx.destination);  
 
         // --- Main Sound Envelope (ADSR on mainGain) ---
         const peakVolume = volume;
-        const attackTime = 0.015;          // Quick attack
+        const attackTime = 0.015;          
         const decayTime = duration * 0.25; 
         const sustainLevel = peakVolume * 0.5; 
         
-        mainGain.gain.setValueAtTime(0.0001, now); // Start silent
-        mainGain.gain.linearRampToValueAtTime(peakVolume, now + attackTime); // Attack
-        mainGain.gain.exponentialRampToValueAtTime(sustainLevel, now + attackTime + decayTime); // Decay to sustain
-        mainGain.gain.exponentialRampToValueAtTime(0.0001, now + duration); // Release over rest of duration
+        mainGain.gain.setValueAtTime(0.0001, scheduleTime); 
+        mainGain.gain.linearRampToValueAtTime(peakVolume, scheduleTime + attackTime); 
+        mainGain.gain.exponentialRampToValueAtTime(sustainLevel, scheduleTime + attackTime + decayTime); 
+        mainGain.gain.exponentialRampToValueAtTime(0.0001, scheduleTime + duration); 
 
         // --- Echo Parameters ---
-        const delayTime = 0.3;  // Time between echoes in seconds
-        const feedbackAmount = 0.35; // How much of the echo is fed back (0 to <1)
-        const echoVolume = volume * 0.4; // Echo is quieter than direct sound
+        const delayTimeValue = 0.33;  // Delay time for echo
+        const feedbackAmount = 0.35; 
+        const echoVolume = volume * 0.45; 
 
-        delayNode.delayTime.setValueAtTime(delayTime, now);
-        feedbackGain.gain.setValueAtTime(feedbackAmount, now);
-        wetGain.gain.setValueAtTime(0, now); // Start echo silent
-        wetGain.gain.linearRampToValueAtTime(echoVolume, now + attackTime + 0.05); // Echo fades in slightly after direct sound
-        wetGain.gain.exponentialRampToValueAtTime(0.0001, now + duration + delayTime * 2); // Echo fades out longer
+        delayNode.delayTime.setValueAtTime(delayTimeValue, scheduleTime);
+        feedbackGain.gain.setValueAtTime(feedbackAmount, scheduleTime);
+        
+        wetGain.gain.setValueAtTime(0.0001, scheduleTime); // Start echo quiet
+        // Echo fades in slightly after the main attack, giving a sense of space
+        wetGain.gain.linearRampToValueAtTime(echoVolume, scheduleTime + attackTime + 0.1); 
+        // Echo fades out over a longer period
+        wetGain.gain.exponentialRampToValueAtTime(0.0001, scheduleTime + duration + delayTimeValue * 2); 
 
         // --- Start and Stop Oscillator ---
-        oscillator.start(now);
-        oscillator.stop(now + duration + delayTime * 3); // Stop oscillator after main sound and echoes have likely faded
+        oscillator.start(scheduleTime);
+        // Stop oscillator well after main sound and echoes have faded
+        oscillator.stop(scheduleTime + duration + delayTimeValue * 3); 
     }
     
     playSoundBtn.addEventListener('click', async () => {
-        const actx = getAudioContext();
-        if (!actx) return;
+        const actx = getAudioContext(); // Initialize or get existing AudioContext
+        if (!actx) {
+            console.error("playSoundBtn: AudioContext could not be obtained.");
+            return;
+        }
 
+        console.log("Play button clicked. AudioContext initial state:", actx.state);
+        // Resume AudioContext if it's suspended (crucial for browsers' autoplay policies)
         if (actx.state === 'suspended') {
-            try { await actx.resume(); } catch (e) {
+            try {
+                await actx.resume();
+                console.log("AudioContext resumed successfully. New state:", actx.state);
+            } catch (e) {
                 console.error("Error resuming AudioContext:", e);
-                alert("Could not start audio. Please interact with the page again.");
+                alert("Could not start audio. Please interact with the page again or check browser console.");
                 return;
             }
         }
-        if (actx.state === 'closed') {
-             alert("AudioContext is closed. Please reload the page.");
-             return;
+        
+        if (actx.state !== 'running') {
+            console.warn("playSoundBtn: AudioContext is not in 'running' state after attempt to resume. State:", actx.state);
+            // alert("Audio playback might not work. AudioContext state: " + actx.state);
+            // Depending on the browser, it might still play if scheduled, but this is a warning sign.
         }
 
-        const minVolume = 0.04; // Slightly increased min volume for presence
-        const maxVolume = 0.25; // Reduced max to prevent clipping with echoes
+        const minVolume = 0.04; 
+        const maxVolume = 0.22; // Max volume slightly reduced to avoid clipping with echo
         const minSliderVal = parseInt(lineWidthSlider.min, 10);
         const maxSliderVal = parseInt(lineWidthSlider.max, 10);
         
@@ -238,15 +258,19 @@ document.addEventListener('DOMContentLoaded', () => {
             masterVolume = maxVolume;
         }
         masterVolume = Math.max(minVolume, Math.min(maxVolume, masterVolume));
+        console.log("Master Volume calculated:", masterVolume.toFixed(3));
 
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imageData.data;
-        const totalDurationSeconds = 3.5; // Can adjust overall playback speed
+        const totalDurationSeconds = 3.0; 
         const timeStep = totalDurationSeconds / canvas.width;
-        const noteDuration = 0.6; // Duration for each piano note including its tail, allows echo to develop
+        const noteDuration = 0.7; // Increased for more noticeable piano tail and echo
 
-        const minFreq = 80;  // Lower min for more bassy piano notes
-        const maxFreq = 1500; // Max freq for piano (A0 to C8 is ~27.5Hz to ~4186Hz, this is a practical range)
+        const minFreq = 70;  
+        const maxFreq = 1600; 
+
+        // Current time in the audio context, all scheduled times are relative to this + offset
+        const audioContextCurrentTime = actx.currentTime; 
 
         for (let x = 0; x < canvas.width; x++) {
             for (let y = 0; y < canvas.height; y++) {
@@ -258,9 +282,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (a > 200 && !(r === 255 && g === 255 && b === 255 && a === 255)) {
                     const frequency = maxFreq - ((y / canvas.height) * (maxFreq - minFreq));
-                    playNote(frequency, x * timeStep, noteDuration, masterVolume);
+                    // Schedule time for this note: base time + offset based on x position
+                    const scheduledPlayTime = audioContextCurrentTime + (x * timeStep);
+                    playNote(frequency, scheduledPlayTime, noteDuration, masterVolume);
                 }
             }
         }
+        console.log("All notes scheduled for playback.");
     });
 });
